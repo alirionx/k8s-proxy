@@ -3,7 +3,7 @@ kind: Namespace
 metadata:
   labels:
     app.kubernetes.io/managed-by: kustomize
-    app.kubernetes.io/name: k8s-proxy-new
+    app.kubernetes.io/name: k8s-proxy
     control-plane: controller-manager
   name: k8s-proxy-system
 ---
@@ -174,7 +174,7 @@ kind: ServiceAccount
 metadata:
   labels:
     app.kubernetes.io/managed-by: kustomize
-    app.kubernetes.io/name: k8s-proxy-new
+    app.kubernetes.io/name: k8s-proxy
   name: k8s-proxy-controller-manager
   namespace: k8s-proxy-system
 ---
@@ -183,7 +183,7 @@ kind: Role
 metadata:
   labels:
     app.kubernetes.io/managed-by: kustomize
-    app.kubernetes.io/name: k8s-proxy-new
+    app.kubernetes.io/name: k8s-proxy
   name: k8s-proxy-leader-election-role
   namespace: k8s-proxy-system
 rules:
@@ -309,7 +309,7 @@ kind: ClusterRole
 metadata:
   labels:
     app.kubernetes.io/managed-by: kustomize
-    app.kubernetes.io/name: k8s-proxy-new
+    app.kubernetes.io/name: k8s-proxy
   name: k8s-proxy-proxyentry-admin-role
 rules:
 - apiGroups:
@@ -330,7 +330,7 @@ kind: ClusterRole
 metadata:
   labels:
     app.kubernetes.io/managed-by: kustomize
-    app.kubernetes.io/name: k8s-proxy-new
+    app.kubernetes.io/name: k8s-proxy
   name: k8s-proxy-proxyentry-editor-role
 rules:
 - apiGroups:
@@ -357,7 +357,7 @@ kind: ClusterRole
 metadata:
   labels:
     app.kubernetes.io/managed-by: kustomize
-    app.kubernetes.io/name: k8s-proxy-new
+    app.kubernetes.io/name: k8s-proxy
   name: k8s-proxy-proxyentry-viewer-role
 rules:
 - apiGroups:
@@ -380,7 +380,7 @@ kind: RoleBinding
 metadata:
   labels:
     app.kubernetes.io/managed-by: kustomize
-    app.kubernetes.io/name: k8s-proxy-new
+    app.kubernetes.io/name: k8s-proxy
   name: k8s-proxy-leader-election-rolebinding
   namespace: k8s-proxy-system
 roleRef:
@@ -397,7 +397,7 @@ kind: ClusterRoleBinding
 metadata:
   labels:
     app.kubernetes.io/managed-by: kustomize
-    app.kubernetes.io/name: k8s-proxy-new
+    app.kubernetes.io/name: k8s-proxy
   name: k8s-proxy-manager-rolebinding
 roleRef:
   apiGroup: rbac.authorization.k8s.io
@@ -426,7 +426,7 @@ kind: Service
 metadata:
   labels:
     app.kubernetes.io/managed-by: kustomize
-    app.kubernetes.io/name: k8s-proxy-new
+    app.kubernetes.io/name: k8s-proxy
     control-plane: controller-manager
   name: k8s-proxy-controller-manager-metrics-service
   namespace: k8s-proxy-system
@@ -437,7 +437,7 @@ spec:
     protocol: TCP
     targetPort: 8443
   selector:
-    app.kubernetes.io/name: k8s-proxy-new
+    app.kubernetes.io/name: k8s-proxy
     control-plane: controller-manager
 ---
 apiVersion: apps/v1
@@ -445,7 +445,7 @@ kind: Deployment
 metadata:
   labels:
     app.kubernetes.io/managed-by: kustomize
-    app.kubernetes.io/name: k8s-proxy-new
+    app.kubernetes.io/name: k8s-proxy
     control-plane: controller-manager
   name: k8s-proxy-controller-manager
   namespace: k8s-proxy-system
@@ -453,14 +453,14 @@ spec:
   replicas: 1
   selector:
     matchLabels:
-      app.kubernetes.io/name: k8s-proxy-new
+      app.kubernetes.io/name: k8s-proxy
       control-plane: controller-manager
   template:
     metadata:
       annotations:
         kubectl.kubernetes.io/default-container: manager
       labels:
-        app.kubernetes.io/name: k8s-proxy-new
+        app.kubernetes.io/name: k8s-proxy
         control-plane: controller-manager
     spec:
       containers:

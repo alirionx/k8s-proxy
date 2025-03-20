@@ -31,16 +31,16 @@ import (
 )
 
 // namespace where the project is deployed in
-const namespace = "k8s-proxy-new-system"
+const namespace = "k8s-proxy-system"
 
 // serviceAccountName created for the project
-const serviceAccountName = "k8s-proxy-new-controller-manager"
+const serviceAccountName = "k8s-proxy-controller-manager"
 
 // metricsServiceName is the name of the metrics service of the project
-const metricsServiceName = "k8s-proxy-new-controller-manager-metrics-service"
+const metricsServiceName = "k8s-proxy-controller-manager-metrics-service"
 
 // metricsRoleBindingName is the name of the RBAC that will be created to allow get the metrics data
-const metricsRoleBindingName = "k8s-proxy-new-metrics-binding"
+const metricsRoleBindingName = "k8s-proxy-metrics-binding"
 
 var _ = Describe("Manager", Ordered, func() {
 	var controllerPodName string
@@ -173,7 +173,7 @@ var _ = Describe("Manager", Ordered, func() {
 		It("should ensure the metrics endpoint is serving metrics", func() {
 			By("creating a ClusterRoleBinding for the service account to allow access to metrics")
 			cmd := exec.Command("kubectl", "create", "clusterrolebinding", metricsRoleBindingName,
-				"--clusterrole=k8s-proxy-new-metrics-reader",
+				"--clusterrole=k8s-proxy-metrics-reader",
 				fmt.Sprintf("--serviceaccount=%s:%s", namespace, serviceAccountName),
 			)
 			_, err := utils.Run(cmd)

@@ -1,5 +1,5 @@
 # k8s-proxy
-// TODO(user): Add simple overview of use/purpose
+An Operator which turns k8s into a reverse proxy for external endpoints
 
 ## Description
 // TODO(user): An in-depth paragraph about your project and overview of use

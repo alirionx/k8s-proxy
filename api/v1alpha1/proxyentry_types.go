@@ -45,6 +45,7 @@ type Ingress struct {
 	Host          string `json:"host,omitempty"`
 	Tls           bool   `json:"tls,omitempty"`
 	ClusterIssuer string `json:"clusterIssuer,omitempty"`
+	TlsSecretName string `json:"tlsSecretName,omitempty"`
 }
 
 // ProxyEntrySpec defines the desired state of ProxyEntry.

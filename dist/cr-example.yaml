@@ -16,5 +16,6 @@ spec:
     backendProtocol: HTTP
     host: pe-sample.app-scape.de
     tls: true
+    # tlsSecretName: "deschd"
     # clusterIssuer: cloudflare-issuer
     

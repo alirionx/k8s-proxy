@@ -37,6 +37,7 @@ type ProxyEntryReconciler struct {
 
 func (r *ProxyEntryReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	log := log.FromContext(ctx)
+	var err error
 
 	// Fetch the ProxyEntry instance-----------------------------------------------------------
 	pe := &k8sproxyv1alpha1.ProxyEntry{}
@@ -55,9 +56,9 @@ func (r *ProxyEntryReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 	// The Service-------------
 	// Check if the Service already exists, if not create a new one
 	svcFound := &v1.Service{}
-	err := r.Get(ctx, types.NamespacedName{Name: subResourceName, Namespace: pe.Namespace}, svcFound)
+	err = r.Get(ctx, types.NamespacedName{Name: subResourceName, Namespace: pe.Namespace}, svcFound)
 
-	// Create The Service-------------
+	// Create The Service---------------------------------------------
 	if err != nil && apierrors.IsNotFound(err) {
 		// Define a new Service
 		svc := r.serviceForProxyentry(pe)
@@ -77,7 +78,7 @@ func (r *ProxyEntryReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 	if svcFound.Spec.Type != v1.ServiceType(pe.Spec.Service.Type) ||
 		svcFound.Spec.Ports[0].Port != pe.Spec.Service.Port {
 
-		log.Info("Updating Service", "Service.Namespace", svcFound.Namespace, "Service.Name", svcFound.Name)
+		log.Info("Resetting Service", "Service.Namespace", svcFound.Namespace, "Service.Name", svcFound.Name)
 
 		svcFound.Spec.Type = v1.ServiceType(pe.Spec.Service.Type)
 		svcFound.Spec.Ports[0].Port = pe.Spec.Service.Port
@@ -91,7 +92,7 @@ func (r *ProxyEntryReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		return ctrl.Result{Requeue: true}, nil
 	}
 
-	// The Endpoints-------------
+	// The Endpoints-------------------------------------------------
 	// Check if the Endpoints already exists, if not create a new one
 	epsFound := &v1.Endpoints{}
 	err = r.Get(ctx, types.NamespacedName{Name: subResourceName, Namespace: pe.Namespace}, epsFound)
@@ -117,7 +118,7 @@ func (r *ProxyEntryReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		epsFound.Subsets[0].Ports[0].Port != pe.Spec.Endpoints.Port ||
 		epsFound.Subsets[0].Ports[0].Protocol != v1.ProtocolTCP {
 
-		log.Info("Updating Endpoints", "Endpoints.Namespace", svcFound.Namespace, "Endpoints.Name", svcFound.Name)
+		log.Info("Resetting Endpoints", "Endpoints.Namespace", svcFound.Namespace, "Endpoints.Name", svcFound.Name)
 
 		epsFound.Subsets[0].Addresses[0].IP = pe.Spec.Endpoints.Ip
 		epsFound.Subsets[0].Ports[0].Port = pe.Spec.Endpoints.Port
@@ -130,15 +131,15 @@ func (r *ProxyEntryReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		return ctrl.Result{Requeue: true}, nil
 	}
 
-	// The Ingress-------------
+	// The Ingress-----------------------------------------------------
 	// Check if the Ingress already exists, if not create a new one
+	ing := r.ingressForProxyentry(pe)
 	ingFound := &networkingv1.Ingress{}
 	err = r.Get(ctx, types.NamespacedName{Name: subResourceName, Namespace: pe.Namespace}, ingFound)
 
 	// Create The Ingress-------------
 	if err != nil && apierrors.IsNotFound(err) {
 		// Define a new Ingress
-		ing := r.ingressForProxyentry(pe)
 		log.Info("Creating a new Ingress", "Ingress.Namespace", ing.Namespace, "Ingress.Name", ing.Name)
 		if err := r.Client.Create(context.TODO(), ing); err != nil {
 			log.Error(err, "Failed to create new Ingress", "Ingress.Namespace", ing.Namespace, "Ingress.Name", ing.Name)
@@ -152,22 +153,57 @@ func (r *ProxyEntryReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 	}
 
 	// Reset The Ingress-------------
-	if *ingFound.Spec.IngressClassName != pe.Spec.Ingress.ClassName ||
-		ingFound.Spec.Rules[0].Host != pe.Spec.Ingress.Host ||
-		ingFound.Spec.Rules[0].HTTP.Paths[0].Backend.Service.Port.Number != pe.Spec.Service.Port ||
-		(pe.Spec.Ingress.Tls && ingFound.Spec.TLS[0].Hosts[0] != pe.Spec.Ingress.Host) ||
-		(ingFound.Spec.TLS == nil && pe.Spec.Ingress.Tls) ||
-		(ingFound.Spec.TLS != nil && !pe.Spec.Ingress.Tls) ||
-		(pe.Spec.Ingress.ClusterIssuer != ingFound.ObjectMeta.Annotations["cert-manager.io/cluster-issuer"]) {
+	chk := false
+	cmAnno := "cert-manager.io/cluster-issuer"
+	bepAnnos := []string{
+		"nginx.ingress.kubernetes.io/backend-protocol",
+		"traefik.ingress.kubernetes.io/service.serversscheme",
+	}
 
-		log.Info("Recreating Ingress", "Ingress.Namespace", ingFound.Namespace, "Ingress.Name", ingFound.Name)
-		if err := r.Delete(ctx, ingFound); err != nil {
-			log.Error(err, "Failed to recreate Ingress Specs", "Ingress.Namespace", ingFound.Namespace, "Ingress.Name", ingFound.Name)
+	if ingFound.ObjectMeta.Annotations[bepAnnos[0]] != ing.ObjectMeta.Annotations[bepAnnos[0]] {
+		for idx, _ := range bepAnnos {
+			ingFound.ObjectMeta.Annotations[bepAnnos[idx]] = ing.ObjectMeta.Annotations[bepAnnos[idx]]
+		}
+		chk = true
+	}
+	if *ingFound.Spec.IngressClassName != *ing.Spec.IngressClassName {
+		*ingFound.Spec.IngressClassName = *ing.Spec.IngressClassName
+		chk = true
+	}
+	if ingFound.Spec.Rules[0].Host != ing.Spec.Rules[0].Host {
+		ingFound.Spec.Rules[0].Host = ing.Spec.Rules[0].Host
+		if ing.Spec.TLS != nil {
+			ingFound.Spec.TLS[0].Hosts[0] = ing.Spec.Rules[0].Host
+		}
+		chk = true
+	}
+	if ingFound.Spec.TLS == nil && ing.Spec.TLS != nil {
+		ingFound.Spec.TLS = ing.Spec.TLS
+		chk = true
+	}
+	if ingFound.Spec.TLS != nil && ing.Spec.TLS == nil {
+		ingFound.Spec.TLS = nil
+		chk = true
+	}
+	if ingFound.Spec.TLS != nil && ingFound.Spec.TLS[0].SecretName != ing.Spec.TLS[0].SecretName {
+		ingFound.Spec.TLS[0].SecretName = ing.Spec.TLS[0].SecretName
+		chk = true
+	}
+	if ingFound.ObjectMeta.Annotations[cmAnno] != ing.ObjectMeta.Annotations[cmAnno] {
+		ingFound.ObjectMeta.Annotations[cmAnno] = ing.ObjectMeta.Annotations[cmAnno]
+		chk = true
+	}
+
+	if chk {
+		log.Info("Resetting Ingress", "Ingress.Namespace", ingFound.Namespace, "Ingress.Name", ingFound.Name)
+		if err := r.Update(ctx, ingFound); err != nil {
+			log.Error(err, "Failed to update Ingress Specs", "Ingress.Namespace", ingFound.Namespace, "Ingress.Name", ingFound.Name)
 			return ctrl.Result{}, err
 		}
 		return ctrl.Result{Requeue: true}, nil
 	}
 	return ctrl.Result{}, nil
+
 }
 
 // SetupWithManager sets up the controller with the Manager-------------------------------------

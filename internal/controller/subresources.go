@@ -125,10 +125,14 @@ func (r *ProxyEntryReconciler) ingressForProxyentry(pe *k8sproxyv1alpha1.ProxyEn
 	}
 
 	if pe.Spec.Ingress.Tls {
+		var secretName string = name + "-tls"
+		if pe.Spec.Ingress.TlsSecretName != "" {
+			secretName = pe.Spec.Ingress.TlsSecretName
+		}
 		ing.Spec.TLS = []networkingv1.IngressTLS{
 			{
 				Hosts:      []string{pe.Spec.Ingress.Host},
-				SecretName: name + "-tls",
+				SecretName: secretName,
 			},
 		}
 		if clusterIssuer != "" {
